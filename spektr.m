@@ -52,7 +52,7 @@ function varargout = spektr(varargin)
 
 % Edit the above text to modify the response to help spektr
 
-% Last Modified by GUIDE v2.5 07-Jul-2003 11:25:32
+% Last Modified by GUIDE v2.5 14-Jun-2014 11:04:14
 % 
 global q
 global comp_string
@@ -100,6 +100,7 @@ guidata(hObject, handles);
 % uiwait(handles.figure1);
 
 % Put the axis property "hold on" by default
+set(handles.figure1, 'units', 'normalized', 'position', [0.05 0.15 0.85 0.85])
 hold on;
 
 % --- Outputs from this function are returned to the command line.

@@ -6,8 +6,9 @@ function Z = spektrElement2Z(element)
 %% Revision number:  00
 %% Revision date:    15-Mar-2004
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage: e = spektrElement2Z(element)
 %%

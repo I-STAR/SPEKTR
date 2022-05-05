@@ -1,27 +1,41 @@
-function attenuation = spektrMuRhoElement(element)
+function [mu, rho] = spektrMuRhoElement(element)
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektrMuRhoElement.m
-%% Version number:   1
+%% Version number:   3
 %% Revision number:  00
-%% Revision date:    15-Mar-2004
+%% Revision date:    31-May-2016
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
-%%  Usage: f = spektrMuRhoElement(q, elem_filters)
+%%  Usage: mu = spektrMuRhoElement(element)
+%%                      OR
+%%         [mu rho] = spektrMuRhoElement(element)
 %%
 %%  Inputs:
 %%      element - Atomic Number of filter to look up
+%%      
+%%      ie. mu = spektrMuRhoElement(13)
+%%          -Returns a [150x1] of the linear attenuation coefficient for energies 1 - 150 keV for Aluminum in units of 1/mm.
 %%
-%%      ie. mu = spektrMuRhoElement(13);
-%%      Aluminum
+%%      ie. [mu rho] = spektrMuRhoElement(13)
+%%          -Finds the linear attenuation coefficient ([150x1]) of Aluminum in 1/mm measured at energies
+%%           corresponding to the average energy of each energy bin in a TASMICS spectrum.
 %%
 %%  Outputs:
 %%
+%%      mu - The linear attenuation coefficient ([150 x 1]) in 1/mm for the element corresponding to the 
+%%               atomic number inputted for energy 1-150 keV in 1 keV bins. This attenuation coefficient data is 
+%%               calculated at every half keV (1.5, 2.5, 3.5, 4.5 etc.). This improves the accuracy of filtration calculations
+%%               as mu is now calculated at the average energy of each energy bin in a TASMICS spectra.
+%%               
+%%      rho - The density (g/cm^3) of the element corresponding to the atomic number inputted (scalar) 
+%%
 %%  Description:
-%%      This function will generate the linear attenuation coefficient (mu/rho) of the
-%%      compound comprised of the elements listed in 'elements' (Nx2 matrix)
+%%      This function will generate the linear attenuation coefficient and density
+%%      for the element listed in 'element' (scalar). 
 %%
 %%  Notes:
 %%
@@ -32,6 +46,7 @@ function attenuation = spektrMuRhoElement(element)
 %% Revision History
 %%  0.000    2003 05 01     AW  Initial code
 %%	1.000    2004 03 15     DJM Initial released version
+%%  3.000    2016 05 28     JGP Output linear attenuation (mu) and density (rho)
 %%*************************************************************************
 %%
 
@@ -40,22 +55,24 @@ function attenuation = spektrMuRhoElement(element)
 % Energy Vector
 EnergyVector = 1:150;
 
-% Column Identifiers for XL database sheets
-%%% ... in xls database of mu/rho for elements
-%%%     AND for the xls database for mu/rho for compounds
+%%% Xcel Column containing attenuation coefficients at every half keV to
+%%% match the average energy within each energy bin.
 XLColumn_LinearAttenuation = 9;
-%%% ... in xls database for density of elements and compounds
+%%% ... in .mat file database for density of elements and compounds
 XLColumn_Density = 2;
+%%% Xcel Column containing attenuation coefficients at every half keV to
+%%% match the average energy within each energy bin.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Read in density of filter from density.xls
+% Read in density of filter from density.mat
 % This file consists of a 92x2 matrix with the following structure:(elements,densities)
 % column 3 contains the censities in g/cm^3
 
 load('spektrDensityElements.mat');
 
 % Read in attenuation coefficient data for the specified filter from
-% murho_elements.xls
+% murho_elements.mat
        
 % In file 'murho_elements' there exists 92 sheets, each sheet contains elemental
 % attenuation coefficients and attenuation coefficients (energy based).
@@ -71,19 +88,18 @@ load('spektrDensityElements.mat');
 
 % INTERPOLATED DATA;
 % G)column 7 empty
-% H)column 8(energy) [keV], 1 keV intervals, from 1-150 keV
-% I)column 9(attentuation/density)
+% H)column 8(attenuation/density) calculated at every half keV. Data taken NIST XCom database
+% I)column 9(attentuation/density) bicubicly interpolated attenuation to 1 keV bins based on old NIST database
 % J)column 10(attentuation/density)en
 
 % Read in attenuation coefficient data for the specified filter from
-% murho_elements.xls
+% murho_elements.mat
 load('spektrMuRhoElements.mat');
 
-attenuation = A{element}(EnergyVector,XLColumn_LinearAttenuation); % 150x1 matrix (contains mass attenuation coefficients)
-    % take the 9th column of the spreadsheet A
-        
 % Convert interpolated data to attenuation via the following expression:
-% attenuation = (attenuation/density)* density => [cm^2/g]*[g/cm^3]=[1/cm]
+% attenuation = (attenuation/density)* density * 0.1 => [cm^2/g]*[g/cm^3] * [cm / mm =[1/mm]
 % The 1/10 accnts for converting the attenuation matrix to units of [1/mm]
         
-attenuation = density(element,XLColumn_Density)*attenuation/10;
+%mu = attenuation * density(element,XLColumn_Density) * 0.1;
+mu = A{element}(EnergyVector,XLColumn_LinearAttenuation) * density(element, XLColumn_Density) * 0.1;
+rho = density(element,XLColumn_Density);

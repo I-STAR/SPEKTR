@@ -7,7 +7,8 @@ function element = spektrZ2Element(Z)
 %% Revision date:    15-Mar-2004
 %%
 %% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%%         	I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage: element = spektrZ2Element(Z)
 %%

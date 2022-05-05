@@ -22,7 +22,7 @@ function varargout = spektrCompound(varargin)
 
 % Edit the above text to modify the response to help spektrCompound
 
-% Last Modified by GUIDE v2.5 04-Jul-2003 13:08:13
+% Last Modified by GUIDE v2.5 17-Jul-2014 08:38:03
 
 global mu_compound
 global element_list
@@ -66,6 +66,8 @@ global element_list
 global comp_string
 global comp_thickness
 element_list=[];
+% Makes the dimensions of the window created by spektrCompound completely visible in any screen size
+set(handles.figure1, 'units', 'normalized', 'position', [0.05 0.15 0.85 0.85])
 
 % UIWAIT makes spektrCompound wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -94,7 +96,6 @@ if ispc
 else
     set(hObject,'BackgroundColor',get(0,'defaultUicontrolBackgroundColor'));
 end
-
 
 % --- Executes on selection change in listbox1.
 function listbox1_Callback(hObject, eventdata, handles)
@@ -314,7 +315,7 @@ densityCompound_input=get(handles.edit2,'string');
 density=str2double(densityCompound_input);
 
 murho_compound = spektrMuRhoCompound(element_list);
-mu_compound = murho_compound*density;
+mu_compound = murho_compound*density
 
 comp_string='';
 
@@ -412,14 +413,14 @@ EnergyVector = [1:1:150]';
 data_SAVE = [EnergyVector mu_compound];
 
 % write data to file
-file_SAVE=get(handles.edit4,'String');
-fid=fopen(file_SAVE,'w');
-for i=1:150,
-    fprintf(fid,'%d   %d\r',data_SAVE(i,1),data_SAVE(i,2));
+file_SAVE = uiputfile('*.txt', 'Save Attenuation Coefficient for your Compound'); 
+if ~isequal(file_SAVE, 0)
+    fid=fopen(file_SAVE,'w');
+    for i=1:150,
+        fprintf(fid,'%d   %d\r',data_SAVE(i,1),data_SAVE(i,2));
+    end
+    fclose(fid);
 end
-
-fclose(fid);
-
 
 % --- Executes during object creation, after setting all properties.
 function edit7_CreateFcn(hObject, eventdata, handles)
@@ -501,15 +502,16 @@ global comp_thickness
 data_LOAD(150:2)=0;
 
 % write data to file
-file_LOAD_name = get(handles.edit8,'String');
-fid = fopen(file_LOAD_name,'r');
+file_LOAD_name = uigetfile('*.txt', 'Load Attenuation Coefficient Data');
+if ~isequal(file_LOAD_name, 0)
+    fid = fopen(file_LOAD_name,'r');
 
-data_LOAD = fscanf(fid,'%f %f',[2 inf]);
-data_LOAD = data_LOAD';
-q = data_LOAD(1:150,2);
+    data_LOAD = fscanf(fid,'%f %f',[2 inf]);
+    data_LOAD = data_LOAD';
+    q = data_LOAD(1:150,2);
 
-messageBox=msgbox('LOADING FILE REQUIREMENTS:                                                                                                        The file which is loaded must be a tab delimited ASCII text file.                  FILE FORMAT: 150x2 table of the following form:                                       [ monoenergies photon_output ; .. .. ; .. .. ]','SPEKTR 1.1');
-
+    messageBox=msgbox('LOADING FILE REQUIREMENTS:                                                                                                        The file which is loaded must be a tab delimited ASCII text file.                  FILE FORMAT: 150x2 table of the following form:                                       [ monoenergies photon_output ; .. .. ; .. .. ]','SPEKTR 1.1');
+end
 % --- Executes on button press in pushbutton9.
 function pushbutton9_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton9 (see GCBO)
@@ -648,5 +650,3 @@ function edit10_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of edit10 as text
 %        str2double(get(hObject,'String')) returns contents of edit10 as a double
-
-

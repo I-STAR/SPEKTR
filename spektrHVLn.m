@@ -7,8 +7,9 @@ function h = spektrHVLn(q,n,atomic_number)
 %% Revision number:  00
 %% Revision date:    15-Mar-2004
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage:  h = spektrHVLn(q, n, atomic_number)   
 %%
@@ -17,8 +18,8 @@ function h = spektrHVLn(q,n,atomic_number)
 %%
 %%  Input Parameters: 
 %%      q - x-ray energy spectrum (1-150keV)
-%%      n - number of the half value layer to calculate
-%       atomic_number - element comprising the filter of interest. 
+%%      n - number of the half value layers to calculate
+%%      atomic_number - element comprising the filter of interest. 
 %%
 %%  Output Parameters: 
 %%      h - thickness of n'th HVL (Half Value Layer) [mm]
@@ -68,8 +69,8 @@ while( exposure>[n_factor*spektrExposure(q)+accuracy] )|( exposure<[n_factor*spe
         thickness = max-increment;
     elseif exposure>(n_factor*spektrExposure(q))    
         thickness = min+increment;
-    else exposure==(n_factor*spektrExposure(q))
-        ;
+    else %%exposure==(n_factor*spektrExposure(q));
+    ;
     end
     
     %   generate spectrum given a elemental filter of a specified thickness    

@@ -3,12 +3,13 @@ function mmAl = spektrEquiv_mmAl_Compound(q0,mu,t)
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektrEquiv_mmAl_Compound.m
-%% Version number:   2
+%% Version number:   3
 %% Revision number:  00
-%% Revision date:    10-May-2006
+%% Revision date:    15-Jun-2015
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR
+%%          Johns Hopkins University
 %%
 %%  Usage:  mmAl = spektrEquiv_mmAl_Compound(filter_list)
 %%

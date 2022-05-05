@@ -2,20 +2,21 @@ function e = spektrExposure(q)
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektrExposure.m
-%% Version number:   2
+%% Version number:   3
 %% Revision number:  00
 %% Revision date:    19-Apr-2006
 %%
-%% 2006 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage: e = spektrExposure(q)
 %%
 %%  Inputs:
 %%      q - X-Ray Energy Spectrum (is a [150 x 1] matrix), generated from the 
 %%          function spektrSpectrum(..,..).  Each matrix element represents 
-%%          the # of photons per energy bin (using 1 keV bins, from 1-150 keV)
-%%
+%%          the # of photons / mAs / mm^2 in an one keV energy bin (from 1-150 keV)
+%%      
 %%  Outputs:
 %%      e = Exposure [mR/mAs]
 %%
@@ -46,6 +47,7 @@ function e = spektrExposure(q)
 %%  0.000    2003 05 01     AW  Initial code
 %%	1.000    2004 03 15     DJM Initial released version
 %%	2.000    2006 04 19     DJM Removed XLSread and replaced with .MAT
+%%  3.000    2015 06 15     JGP Removed all xls dependencies
 %%*************************************************************************
 %%
 

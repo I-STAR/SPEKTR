@@ -7,8 +7,9 @@ function mmAl = spektrEquiv_mmAl(q0,filter_list)
 %% Revision number:  00
 %% Revision date:    10-May-2006
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage:  mmAl = spektrEquiv_mmAl(q0,filter_list)
 %%

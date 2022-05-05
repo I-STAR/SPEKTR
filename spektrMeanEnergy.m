@@ -3,19 +3,20 @@ function meanEnergy = spektrMeanEnergy(q)
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektrMeanEnergy.m
-%% Version number:   1
+%% Version number:   3
 %% Revision number:  00
 %% Revision date:    15-Mar-2004
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage: meanEnergy = spektrMeanEnergy(q)
 %%
 %% Input Parameters: 'q' is an X-Ray Energy Spectrum (is a [150 x 1] matrix), generated 
-%%                   from the function spektr(..,..). 
+%%                   from the function spektrSpectrum(..,..). 
 %%
-%%                   ie. h = spektrMeanEnergy(spektr_spektr(100));
+%%                   ie. h = spektrMeanEnergy(spektrSpectrum(100));
 %%
 %% Output Parameters: Mean Energy [keV]
 %%

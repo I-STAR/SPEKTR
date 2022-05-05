@@ -1,23 +1,24 @@
-function FE = spektrFluencePerExposure(q)
+function FE = spektrFluencePerExposure(q, varargin)
 
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektrFluencePerExposure.m
-%% Version number:   2
+%% Version number:   3
 %% Revision number:  00
 %% Revision date:    10-Apr-2006
 %%
-%% 2006 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
-%%  Usage: e = spektrFluencePerExposure(spektr(90)); 
+%%  Usage: e = spektrFluencePerExposure(spektrSpectrum(90)); 
 %%
 %% (photon fluence)/exposure = (5.43x10^5)/((u[E]/p)en*E)*normalized(q) [photons/mm^2mR]
 %%
 %%
 %% Input Parameters: 'q' is an energy spectrum comprising a 150x1 matrix. This 
 %%                   spectrum can be generated from the matlab function
-%%                   spektr(kVp, [Al_thickness kV_ripple]). Each matrix
+%%                   spektrSpectrum(kVp, [Al_thickness kV_ripple]). Each matrix
 %%                    element represents the # of photons per energy bin (using 1 
 %%                    keV bins, from 1-150 keV)
 %%
@@ -35,14 +36,14 @@ function FE = spektrFluencePerExposure(q)
 %%*************************************************************************
 %% Revision History
 %%  0.000    2003 05 01     AW  Initial code
-%%	1.000    2004 03 15     DJM Initial released version
+%%	1.000    2004 03 15     DJM Initial released version1
 %%	2.000    2006 04 19     DJM Removed XLSread and replaced with .MAT
+%%  3.000    2015 06 15     JGP Removed all xls dependencies
 %%*************************************************************************
 %%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% PARAMETERS
-
 Column_FluencePerExposure = 3;
 
 % Read in the appropriate spreadsheet for the fuence per unit of exposure (of air compound)

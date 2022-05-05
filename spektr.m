@@ -2,12 +2,13 @@ function varargout = spektr(varargin)
 %%**************************************************************************
 %% System name:      SPEKTR
 %% Module name:      spektr.m
-%% Version number:   1
+%% Version number:   3
 %% Revision number:  00
-%% Revision date:    15-Mar-2004
+%% Revision date:    15-Jun-2016
 %%
-%% 2004 (C) Copyright by Jeffrey H. Siewerdsen.
-%%          Princess Margaret Hospital
+%% 2016 (C) Copyright by Jeffrey H. Siewerdsen.
+%%          I-STAR Lab
+%%          Johns Hopkins University
 %%
 %%  Usage: spektr
 %%
@@ -26,6 +27,8 @@ function varargout = spektr(varargin)
 %% Revision History
 %%  0.000    2003 05 01     AW  Initial code
 %%	1.000    2004 03 15     DJM Initial released version
+%%  3.000    2015 06 15     JGP Automatic window resize and
+%%                              display of inherent filtration
 %%*************************************************************************
 %%
 
@@ -52,7 +55,7 @@ function varargout = spektr(varargin)
 
 % Edit the above text to modify the response to help spektr
 
-% Last Modified by GUIDE v2.5 14-Jun-2014 11:04:14
+% Last Modified by GUIDE v2.5 27-May-2016 08:36:35
 % 
 global q
 global comp_string
@@ -89,12 +92,23 @@ function spektrOpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to spektr (see VARARGIN)
+global filter_list
+global filter_list_comp
+global q;
+global q0;
 
 % Choose default command line output for spektr
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
+
+% Initialize the filter variables
+filter_list = [];
+filter_list_comp = [];
+
+% Initialize both spectrum variables
+q0 = [];
 
 % UIWAIT makes spektr wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -149,6 +163,7 @@ global filter_list_comp
 global element_list
 global mu_compound
 
+
 % set the program state to busy
 set(handles.edit14,'String','BUSY','ForegroundColor','red');
 
@@ -156,55 +171,40 @@ set(handles.edit14,'String','BUSY','ForegroundColor','red');
 drawnow;
 
 % initialize the filter lists
-filter_list = [];
-filter_list_comp = [];
+%filter_list = [];
+%filter_list_comp = [];
 
 % X-Ray tube settings
 
 % Extract kVp
-kVp = str2double(get(handles.edit1,'string'));
+kVp = str2double(get(handles.edit18,'string'));
 
 % Extract kVRipple
 kVRipple = str2double(get(handles.edit2,'string'));
+
+% Extract mm Cu
+CuFilterThick = str2double(get(handles.edit26,'string'));
 
 % Extract mm Al
 AlFilterThick = str2double(get(handles.edit3,'string'));
 
 % Generate x-ray spectrum
-q = spektrSpectrum(kVp,[AlFilterThick kVRipple]);
+set(gcf, 'DoubleBuffer', 'on');
+if get(handles.radiobutton1, 'Value') == 1
+    q = spektrSpectrum(kVp,[AlFilterThick kVRipple],'TASMICS', 1);
+    q = spektrBeers(q, [29 CuFilterThick]);
+else
+    q = spektrSpectrum(kVp, [AlFilterThick kVRipple], 'TASMIP');
+    q = spektrBeers(q, [29 CuFilterThick]);
+end
 
 % Tube Select
 hObject = findobj('Tag','popupmenu2');
 val = get(hObject,'Value');
 string_list = get(hObject,'String');
 tube_select = (string_list{val}); % convert from cell array to string
-
-% Find the tube selected, filter the beam accordingly
-if strcmp(tube_select,'Boone/Fewell')==1
-    q = spektrBeers(q,[13 0;74 0]);
-end
-
-if strcmp(tube_select,'Tube_01')==1
-    q = spektrBeers(q,[13 0;74 -0.002]);
-elseif strcmp(tube_select,'Tube_02')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_03')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_04')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_05')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_06')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_07')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_08')==1
-    q = spektrBeers(q,[13 0;74 0]);
-elseif strcmp(tube_select,'Tube_09')==1
-    q = spektrBeers(q,[13 0;74 0]);
-else
-    ;
-end
+inherent_filter = tubeSettings(tube_select);
+q = spektrBeers(q, inherent_filter);
 
 % set the program state to ready
 set(handles.edit14,'String','READY','ForegroundColor',[0 0.5 0]);
@@ -217,9 +217,11 @@ selected_string = (string_list{val}); % convert from cell array to string
 color = selected_string;
 
 %Plot x-ray spectrum
+
 plot(q,color);
-xlabel('keV');
-ylabel('Photon Output');
+xlabel('Energy (keV)');
+string = sprintf('Photons / mm^2 / mAs \n at 100cm from the source');
+ylabel(string);
 title('X-Ray Spectrum');
 grid on;
 
@@ -259,6 +261,11 @@ function edit3_CreateFcn(hObject, eventdata, handles)
 
 % Hint: edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
+global AlThick
+set(hObject, 'String', '2.5');
+
+AlThick = str2double(get(hObject,'String'));
+
 if ispc
     set(hObject,'BackgroundColor','white');
 else
@@ -274,7 +281,10 @@ function edit3_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of edit3 as text
 %        str2double(get(hObject,'String')) returns contents of edit3 as a double
+global AlThick
+global CuThick;
 
+AlThick = str2double(get(hObject, 'String'));
 
 % --- Executes on button press in checkbox1.
 function checkbox1_Callback(hObject, eventdata, handles)
@@ -325,6 +335,7 @@ function popupmenu2_CreateFcn(hObject, eventdata, handles)
 
 % Hint: popupmenu controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
+
 if ispc
     set(hObject,'BackgroundColor','white');
 else
@@ -341,6 +352,21 @@ function popupmenu2_Callback(hObject, eventdata, handles)
 % Hints: contents = get(hObject,'String') returns popupmenu2 contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from popupmenu2
 
+global AlThick;
+global CuThick;
+string_list = get(hObject, 'String');
+val = get(hObject, 'Value'); 
+tube_selected = string_list{val};
+
+tubeFilters = tubeSettings(tube_selected);
+
+filters = spektrInherentFiltrationDisplay(tubeFilters);
+
+hObject = findobj('Tag', 'listbox8');
+set(hObject, 'String', filters(:, 1));
+
+hObject = findobj('Tag', 'listbox9');
+set(hObject, 'String', filters(:, 2));
 
 % --- Executes on button press in pushbutton2.
 function pushbutton2_Callback(hObject, eventdata, handles)
@@ -591,8 +617,9 @@ selected_string = (string_list{val}); % convert from cell array to string
 color = selected_string;
 
 plot(q,color);
-xlabel('keV');
-ylabel('Photon Output');
+xlabel('Energy (keV)');
+string = sprintf('Photons / mm^2 / mAs\n at 100cm from the source');
+ylabel(string);
 title('X-Ray Spectrum');
 grid on;
 
@@ -836,7 +863,7 @@ else
     end
 
     for i=1:size(filter_list_comp,1),
-        q = spektrBeersCompoundsNIST(q,[filter_list_comp(i,1) filter_list_comp(i,2)]);
+        q = spektrBeersCompoundsNIST(q,{filter_list_comp(i,1) filter_list_comp(i,2)});
     end
 end
 
@@ -855,8 +882,9 @@ color = selected_string;
 
 %Plot x-ray spectrum
 plot(q,color);
-xlabel('keV');
-ylabel('Photon Output');
+xlabel('Energy (keV)');
+string = sprintf('Photons / mm^2 / mAs\n at 100cm from the source');
+ylabel(string);
 title('X-Ray Spectrum');
 grid on;
 
@@ -907,13 +935,36 @@ EnergyVector = [1:1:150]';
 data_SAVE = [EnergyVector q];
 
 % write data to file
-file_SAVE = get(handles.edit8,'String');
-fid = fopen(file_SAVE,'wt');
-for i=1:150,
-    fprintf(fid,'%d   %d\n',data_SAVE(i,1),data_SAVE(i,2));
+file_SAVE = uiputfile('*.txt', 'Save Spectral Data');
+if ~isequal(file_SAVE, 0)
+    fid = fopen(file_SAVE,'wt');
+    for i=1:150,
+        fprintf(fid,'%d   %d\n',data_SAVE(i,1),data_SAVE(i,2));
+    end
+    string_list = get(handles.popupmenu2, 'String');
+    val = get(handles.popupmenu2, 'Value');
+    tubeName = string_list{val};
+    fprintf(fid,'\n%s:\n%s\n','tube name', tubeName);
+    if (get(handles.radiobutton1, 'Value') == 1)
+        model_used = 'TASMICS';
+    else 
+        model_used = 'TASMIP';
+    end
+    fprintf(fid, '\n%s:\n%s\n','Model Used:', model_used);
+    fprintf(fid,'\n%s:\n%s\n','kVp', get(handles.edit18,'String'));
+    fprintf(fid,'\n%s:\n%s\n', 'kV Ripple', get(handles.edit2, 'String'));
+    fprintf(fid, '\n%s:\n%s\n', 'mm Cu', get(handles.edit26, 'String'));
+    fprintf(fid, '\n%s:\n%s\n', 'mm Al', get(handles.edit3,'String'));
+    
+    added_filters = get(handles.listbox3, 'String');
+    fprintf(fid, '\n%s\n', 'Added Filtration:');
+    for i = 1:size(added_filters,1)
+        fprintf(fid, '%s\n', added_filters(i, :));
+    end
+    
+fclose(fid);
 end
 
-fclose(fid);
 % --- Executes during object creation, after setting all properties.
 function edit8_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit8 (see GCBO)
@@ -953,20 +1004,124 @@ global filter_list
 global filter_list_comp
 global element_list
 global mu_compound
+global AlThick
+global CuThick
 
 % imported data from file
 data_LOAD(150:2)=0;
 
 % write data to file
-file_LOAD_name = get(handles.edit9,'String');
-fid = fopen(file_LOAD_name,'r');
+file_LOAD_name = uigetfile('*.txt', 'Select text file containing spectral data');
+if ~isequal(file_LOAD_name, 0)
+    fid = fopen(file_LOAD_name,'r');
+    %Read in q
+    data_LOAD = fscanf(fid,'%f %f',[2 150]);
+    data_LOAD = data_LOAD';
+    q = data_LOAD(1:150,2);
+    for i = 1:3
+        fgets(fid);
+    end
+    %Read in the tube used
+    tube_name = fgetl(fid);
+    listOTubes = get(handles.popupmenu2, 'String');
+    index = find(strncmp(tube_name, listOTubes, length(tube_name)));
+    set(handles.popupmenu2, 'Value', index(1));
+    %Read in the model name
+    for i = 1:3
+        model_name = fgetl(fid);
+    end
+    if strcmp(model_name, 'TASMICS')
+        set(handles.radiobutton1, 'Value', 1);
+        set(handles.radiobutton2, 'Value', 0);
+    elseif strcmp(model_name, 'TASMIP')
+        set(handles.radiobutton2, 'Value', 1);
+        set(handles.radiobutton1, 'Value', 0);
+    else
+        msgbox('The file you saved did not have the specify the model correctly');
+    end
+    
+    %Read in kVp
+    for i = 1:3
+        kVp = fgetl(fid);
+    end 
+    set(handles.edit18, 'String', kVp);
+    
+    %Read in kV Ripple
+    for i = 1:3
+        kVripple = fgetl(fid);
+    end
+    set(handles.edit2, 'String', kVripple);
+    
+    %Read in mmCu
+    for i = 1:3
+        mmCu = fgetl(fid);
+    end
+    set(handles.edit26, 'String', mmCu);
+    CuThick = str2double(mmCu);
+    
+    %Read in mmAl
+    for i = 1:3
+        mmAl = fgetl(fid);
+    end
+    set(handles.edit3, 'String', mmAl);
+    AlThick = str2double(mmAl);
+    
+    %Read both compound and elemental filters
+    for i = 1:2
+        fgetl(fid);
+    end
+    fileAsCell = textscan(fid, '(%c=%d)__%fmm', 'Delimiter','\n');
+    fclose(fid);
+    elemFilterCounter = 1;
+    compFilterCounter = 1;
+    for i = 1:size(fileAsCell{1}, 1)
+        character = fileAsCell{1}(i,1);
+        if strcmp(character, 'Z')
+            filter_list(elemFilterCounter,1) = fileAsCell{2}(i,1);
+            filter_list(elemFilterCounter,2) = fileAsCell{3}(i, 1);            
+            elemFilterCounter = elemFilterCounter +1;
+        elseif fileAsCell{1}(i, 1) == 'C'
+            filter_list_comp(compFilterCounter,1) = fileAsCell{2}(i,1);
+            filter_list_comp(compFilterCounter,2) = fileAsCell{3}(i,1);
+            compFilterCounter = compFilterCounter + 1;
+        else
+            msgbox('Could not differentiate between compound and element filter');
+        end
+    end
+    list2='';
+    for j=1:size(filter_list,1),
+    temp = strcat('(Z=',num2str(filter_list(j,1)),')__',num2str(filter_list(j,2)),'mm');
+        if j==1
+            list2 = temp;
+        else
+            list2 = strvcat(list2,temp);
+        end    
+    end
+    list1 = '';
+    for i=1:size(filter_list_comp,1)
+        temp = strcat('(C=',num2str(filter_list_comp(i,1)),')__',num2str(filter_list_comp(i,2)),'mm');
+        list1 = strvcat(list1,temp);
+    end
+    set(handles.listbox3, 'String', strvcat(list1, list2));
+    
+    string_list = get(handles.popupmenu2, 'String');
+    val = get(handles.popupmenu2, 'Value');
+    tube_selected = string_list{val};
+    
+    tubeFilters = tubeSettings(tube_selected);
+       
+    filters = spektrInherentFiltrationDisplay(tubeFilters);
+    
+    hObject = findobj('Tag', 'listbox8');
+    set(hObject, 'String', filters(:, 1), 'Value', 1);
+    
+    hObject = findobj('Tag', 'listbox9');
+    set(hObject, 'String', filters(:, 2), 'Value', 1);
 
-data_LOAD = fscanf(fid,'%f %f',[2 inf]);
-data_LOAD = data_LOAD';
-q = data_LOAD(1:150,2);
+    
+    messageBox = msgbox('LOADING FILE REQUIREMENTS:                                                                                                        The file which is loaded must be a tab delimited ASCII text file.                  FILE FORMAT: 150x2 table of the following form:                                       [ monoenergies photon_output ; .. .. ; .. .. ]','SPEKTR 1.1');
 
-messageBox = msgbox('LOADING FILE REQUIREMENTS:                                                                                                        The file which is loaded must be a tab delimited ASCII text file.                  FILE FORMAT: 150x2 table of the following form:                                       [ monoenergies photon_output ; .. .. ; .. .. ]','SPEKTR 1.1');
-
+end
 % --- Executes during object creation, after setting all properties.
 function edit9_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit9 (see GCBO)
@@ -1074,7 +1229,7 @@ drawnow;
 % to equivalent filtration functions (previously only for 100 kVp)
 
 % Extract kVp
-kVp = str2double(get(handles.edit1,'string'));
+kVp = str2double(get(handles.edit18,'string'));
 
 % Extract kVRipple
 kVRipple = str2double(get(handles.edit2,'string'));
@@ -1546,17 +1701,68 @@ function pushbutton22_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton22 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global filter_list;
+global filter_list_comp;
+global mu_compound;
+global q;
+global q0;
+global element_list;
+global comp_string
+global comp_thickness
+global generate_compound_exists
+global AlThick
+global CuThick
 
-global q
-global filter_list
-global filter_list_comp
-global element_list
-global mu_compound
+set(handles.edit18, 'String', '120');
+set(handles.edit2, 'String', '0');
+set(handles.edit26, 'String', '0');
+set(handles.edit3, 'String', '2.5');
+set(handles.edit4, 'String', '0');
+set(handles.edit5, 'String', '0');
+set(handles.edit10, 'String', '0');
+set(handles.edit16, 'String', '0');
+set(handles.radiobutton2, 'value', 0);
+set(handles.radiobutton1, 'value', 1);
+set(handles.popupmenu1, 'value', 1);
+set(handles.checkbox1, 'value', 1);
+set(handles.edit11, 'String', '0');
+set(handles.edit7, 'String', '0');
+set(handles.edit15, 'String', '0');
+set(handles.listbox3, 'String', {});
+set(handles.edit17, 'String', '');
+set(handles.edit28, 'String', '0');
+set(handles.edit29, 'String', '0');
 
+%Reset lisbox 8 and 9 that contain the inherent filtrations
+AlThick = str2double(get(handles.edit3, 'String'));
+CuThick = str2double(get(handles.edit4, 'String'));
 
-close(spektr);
-spektrTransmission;
+inhBooneFewell = tubeSettings('Boone/Fewell');
 
+AlFilt = [13 AlThick];
+CuFilt = [29 CuThick];
+row1 = inhBooneFewell(1,:);
+row2 = inhBooneFewell(2,:);
+
+totalInh = zeros(4,2);
+totalInh(1,:) = row1;
+totalInh(2,:) = row2;
+
+filters = spektrInherentFiltrationDisplay(totalInh);
+
+set(handles.listbox8, 'String', filters(:,1)); 
+set(handles.listbox9, 'String', filters(:,2));
+
+filter_list = [];
+filter_list_comp = [];
+q = [];
+q0 = [];
+cla;
+element_list =[];
+comp_string = '';
+generate_compound_exists = 0;
+
+set(handles.popupmenu2, 'Value', 1);
 
 % --- Executes on button press in pushbutton23.
 function pushbutton23_Callback(hObject, eventdata, handles)
@@ -1621,7 +1827,7 @@ set(handles.edit14,'String','BUSY','ForegroundColor','red');
 drawnow;
 
 if comp_thickness == 0
-        set(handles.edit17,'String','');
+    set(handles.edit17,'String','');
 else
     temp = strcat('New.Comp_',num2str(comp_thickness),'mm');
     set(handles.edit17,'String',comp_string);
@@ -1643,7 +1849,6 @@ if ispc
 else
     set(hObject,'BackgroundColor',get(0,'defaultUicontrolBackgroundColor'));
 end
-
 
 
 function edit17_Callback(hObject, eventdata, handles)
@@ -1686,3 +1891,316 @@ function pushbutton25_Callback(hObject, eventdata, handles)
 % 
 % set(handles.edit14,'String','READY');
 % set(handles.edit14,'ForegroundColor',[0 0.5 0]);
+
+
+function edit18_Callback(hObject, eventdata, handles)
+% hObject    handle to edit18 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit18 as text
+%        str2double(get(hObject,'String')) returns contents of edit18 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit18_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit18 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+function mutual_exclude(off)
+% This will set the value of the items in 'off' to 0
+set(off, 'Value', 0)
+
+% --- Executes on button press in radiobutton2.
+function radiobutton2_Callback(hObject, eventdata, handles)
+% hObject    handle to radiobutton2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of radiobutton2
+%Turn radio button 1 off when radiobutton2 is selected
+if get(hObject, 'Value') == 1
+    off = [handles.radiobutton1];
+    mutual_exclude(off);
+else
+    set(hObject, 'Value', 1);
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function radiobutton2_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to radiobutton2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes on button press in radiobutton1.
+function radiobutton1_Callback(hObject, eventdata, handles)
+% hObject    handle to radiobutton1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of radiobutton1
+% Turn radio button 2 off when radio button 1 is selected
+if get(hObject, 'Value') == 1
+    off = [handles.radiobutton2];
+    mutual_exclude(off)
+else 
+    set(hObject, 'Value', 1);
+end
+
+% --- Executes during object creation, after setting all properties.
+function radiobutton1_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to radiobutton1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+%Leave radio button 1 on as a default
+set(hObject,'value',1)
+
+function edit20_Callback(hObject, eventdata, handles)
+% hObject    handle to edit20 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit20 as text
+%        str2double(get(hObject,'String')) returns contents of edit20 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit20_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit20 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in listbox8.
+function listbox8_Callback(hObject, eventdata, handles)
+% hObject    handle to listbox8 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns listbox8 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from listbox8
+
+
+% --- Executes during object creation, after setting all properties.
+function listbox8_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to listbox8 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+global AlThick;
+global CuThick;
+
+inhBooneFewell = tubeSettings('Boone/Fewell');
+
+AlThick = 2.5;
+CuThick = 0;
+
+AlFilt = [13 AlThick];
+CuFilt = [29 CuThick];
+row1 = inhBooneFewell(1,:);
+row2 = inhBooneFewell(2,:);
+
+totalInh = zeros(4,2);
+totalInh(1,:) = row1;
+totalInh(2,:) = row2;
+totalInh(3,:) = AlFilt;
+totalInh(4,:) = CuFilt;
+
+filters = spektrInherentFiltrationDisplay(totalInh);
+
+set(hObject, 'String', filters(:,1)); 
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in listbox9.
+function listbox9_Callback(hObject, eventdata, handles)
+% hObject    handle to listbox9 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns listbox9 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from listbox9
+
+
+% --- Executes during object creation, after setting all properties.
+function listbox9_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to listbox9 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+%Array is meant to contain thickness of Al and Cu from X-ray tube Settings
+%Panel but that field is unreachable from here
+global AlThick
+global CuThick
+
+AlThick = 2.5;
+CuThick = 0;
+
+inhBooneFewell = tubeSettings('Boone/Fewell');
+
+AlFilt = [13 AlThick];
+CuFilt = [29 CuThick];
+row1 = inhBooneFewell(1,:);
+row2 = inhBooneFewell(2,:);
+
+totalInh = zeros(4,2);
+totalInh(1,:) = row1;
+totalInh(2,:) = row2;
+
+
+filters = spektrInherentFiltrationDisplay(totalInh);
+
+set(hObject, 'String', filters(:,2)); 
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function edit26_Callback(hObject, eventdata, handles)
+% hObject    handle to edit26 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit26 as text
+%        str2double(get(hObject,'String')) returns contents of edit26 as a double
+global CuThick
+global AlThick
+
+CuThick = str2double(get(hObject, 'String'));
+
+
+% --- Executes during object creation, after setting all properties.
+function edit26_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit26 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+
+global CuThick
+set(hObject, 'String', '0');
+
+CuThick = str2double(get(hObject, 'String'));
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+% --- Executes during object creation, after setting all properties.
+function axes9_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to axes9 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: place code in OpeningFcn to populate axes9
+
+htext = text('Parent',hObject, ...
+    'String','ADDED FILTRATION:', ...
+    'Rotation',90, 'Position', [.5,.5], 'FontName', 'TIMES', 'FontSize', 14, 'FontWeight', 'Bold', 'FontUnits', 'points');
+
+set(htext, 'horizontalalignment', 'center');
+set(htext, 'verticalalignment', 'middle');
+
+set(hObject, 'Color', [0.561, 0.561, 0.561]);
+set(hObject,'Visible','on');
+
+
+
+% --- Executes on button press in pushbutton28.
+function pushbutton28_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton28 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global q;
+airKermaStr = sprintf('%.4E', spektrAirKerma(q));
+set(handles.edit28, 'String', airKermaStr);
+
+% --- Executes during object creation, after setting all properties.
+function pushbutton28_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pushbutton28 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+
+function edit28_Callback(hObject, eventdata, handles)
+% hObject    handle to edit28 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit28 as text
+%        str2double(get(hObject,'String')) returns contents of edit28 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit28_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit28 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+set(hObject, 'String', '0');
+
+% --- Executes on button press in pushbutton29.
+function pushbutton29_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton29 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global q;
+
+set(handles.edit29,'String', num2str(uint32(spektrFluencePerAirKerma(q))));
+
+
+function edit29_Callback(hObject, eventdata, handles)
+% hObject    handle to edit29 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit29 as text
+%        str2double(get(hObject,'String')) returns contents of edit29 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit29_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit29 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+set(hObject, 'String', '0');
